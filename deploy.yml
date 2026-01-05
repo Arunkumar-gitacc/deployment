@@ -1,0 +1,39 @@
+name: CD - Deploy to EC2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "🔐 Login to Docker Hub"
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            echo "📁 Go to deployment directory"
+            cd /home/ec2-user/deployment
+
+            echo "🏷️ Use latest images"
+            export IMAGE_TAG=latest
+            echo "IMAGE_TAG=$IMAGE_TAG" > .env
+
+            echo "📥 Pull images"
+            docker-compose pull
+
+            echo "🚀 Restart containers"
+            docker-compose up -d --force-recreate --remove-orphans
