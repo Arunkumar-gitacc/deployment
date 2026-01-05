@@ -1,0 +1,42 @@
+name: Deploy to EC2
+
+on:
+  repository_dispatch:
+    types: [frontend_updated, backend_updated]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update env file
+        run: |
+          if [ "${{ github.event.action }}" = "frontend_updated" ]; then
+            sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.tag }}/" .env
+          fi
+
+          if [ "${{ github.event.action }}" = "backend_updated" ]; then
+            sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.tag }}/" .env
+          fi
+
+      - name: Commit updated version
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@github.com"
+          git add .env
+          git commit -m "Update image tag"
+          git push
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/deployment
+            docker compose pull
+            docker compose up -d
