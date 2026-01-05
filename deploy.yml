@@ -1,18 +1,41 @@
-name: CD - Deploy to EC2
+name: Deploy to EC2 (Automatic)
 
 on:
-  workflow_dispatch:
-  push:
-    branches: ["main"]
-
-permissions:
-  contents: read
+  repository_dispatch:
+    types: [frontend_updated, backend_updated]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout deployment repo
+      - name: Checkout deployment repo
+        uses: actions/checkout@v4
+
+      # 2️⃣ Update image tag based on which repo triggered
+      - name: Update env file
+        run: |
+          if [ "${{ github.event.action }}" = "frontend_updated" ]; then
+            echo "Updating FRONTEND_TAG"
+            sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.tag }}/" .env
+          fi
+
+          if [ "${{ github.event.action }}" = "backend_updated" ]; then
+            echo "Updating BACKEND_TAG"
+            sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.tag }}/" .env
+          fi
+
+      # 3️⃣ Commit updated tag to deployment repo
+      - name: Commit updated version
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@github.com"
+          git add .env
+          git commit -m "Update image tag" || echo "No changes to commit"
+          git push
+
+      # 4️⃣ Deploy to EC2
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -20,20 +43,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-
-            echo "🔐 Login to Docker Hub"
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-
-            echo "📁 Go to deployment directory"
             cd /home/ec2-user/deployment
-
-            echo "🏷️ Use latest images"
-            export IMAGE_TAG=latest
-            echo "IMAGE_TAG=$IMAGE_TAG" > .env
-
-            echo "📥 Pull images"
-            docker-compose pull
-
-            echo "🚀 Restart containers"
-            docker-compose up -d --force-recreate --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
