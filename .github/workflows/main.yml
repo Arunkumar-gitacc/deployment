@@ -3,7 +3,9 @@ name: Deploy to EC2
 on:
   repository_dispatch:
     types: [frontend_updated, backend_updated]
-  workflow_dispatch:
+
+permissions:
+  contents: write   # ✅ THIS FIXES THE 403 ERROR
 
 jobs:
   deploy:
@@ -27,7 +29,7 @@ jobs:
           git config user.name "ci-bot"
           git config user.email "ci@github.com"
           git add .env
-          git commit -m "Update image tag"
+          git commit -m "Update image tag" || echo "No changes"
           git push
 
       - name: Deploy to EC2
@@ -38,19 +40,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ec2-user/deployment
-            echo "🔐 Logging into Docker Hub"
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-
-            echo "📁 Moving to app directory"
-            cd /home/ec2-user/deployment
-
-            echo "🏷️ Setting image tag from GitHub SHA"
-            export IMAGE_TAG=${{ github.sha }}
-            echo "IMAGE_TAG=$IMAGE_TAG"
-
-            echo "📥 Pulling images from Docker Hub"
-            docker-compose pull
-
-            echo "🚀 Recreating containers with new images"
-            docker-compose up -d --force-recreate --remove-orphans
-
+            git pull origin main
+            docker compose pull
+            docker compose up -d --force-recreate --remove-orphans
