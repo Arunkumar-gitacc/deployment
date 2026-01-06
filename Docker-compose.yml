@@ -3,28 +3,43 @@ version: "3.9"
 services:
   frontend:
     image: arunkumar885825/frontend:${FRONTEND_TAG}
+    container_name: frontend_app
     ports:
-      - "80:80"
+      - "8081:80"
     depends_on:
       - backend
-
+    networks:
+      - app_net
   backend:
     image: arunkumar885825/backend:${BACKEND_TAG}
-    ports:
-      - "8080:8080"
+    container_name: backend_app
     environment:
       MYSQL_USERNAME: ${MYSQL_USERNAME}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    ports:
+      - "8080:8080"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    networks:
+      - app_net
 
   mysql:
     image: mysql:8.0
+    container_name: mysql_db
+    command: --port=3306
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD_DB}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app_net
+                                          
