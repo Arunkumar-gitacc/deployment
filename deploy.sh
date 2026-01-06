@@ -1,14 +1,10 @@
 #!/bin/bash
 set -e
 
-echo "📥 Pull latest deployment repo changes"
+cd /home/ec2-user/deployment
+
 git pull origin main
 
-echo "📦 Pull latest images from Docker Hub"
+docker compose down
 docker compose pull
-
-echo "♻️ Recreate containers"
-docker compose up -d --force-recreate --remove-orphans
-
-~
-~
+docker compose up -d --force-recreate
