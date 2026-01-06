@@ -38,5 +38,19 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ec2-user/deployment
-            docker compose pull
-            docker compose up -d --remove-orphans
+            echo "🔐 Logging into Docker Hub"
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            echo "📁 Moving to app directory"
+            cd /home/ec2-user/main
+
+            echo "🏷️ Setting image tag from GitHub SHA"
+            export IMAGE_TAG=${{ github.sha }}
+            echo "IMAGE_TAG=$IMAGE_TAG"
+
+            echo "📥 Pulling images from Docker Hub"
+            docker-compose pull
+
+            echo "🚀 Recreating containers with new images"
+            docker-compose up -d --force-recreate --remove-orphans
+
