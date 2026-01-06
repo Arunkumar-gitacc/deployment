@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   frontend:
-    image: arunkumar885825/frontend:${IMAGE_TAG}
+    image: arunkumar885825/frontend:${FRONTEND_TAG}
     container_name: frontend_app
     ports:
       - "8081:80"
@@ -12,7 +12,7 @@ services:
       - app_net
 
   backend:
-    image: arunkumar885825/backend:${IMAGE_TAG}
+    image: arunkumar885825/backend:${BACKEND_TAG}
     container_name: backend_app
     environment:
       MYSQL_USERNAME: ${MYSQL_USERNAME}
