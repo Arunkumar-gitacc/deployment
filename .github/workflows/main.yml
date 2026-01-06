@@ -42,7 +42,7 @@ jobs:
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
             echo "📁 Moving to app directory"
-            cd /home/ec2-user/main
+            cd /home/ec2-user/deployment
 
             echo "🏷️ Setting image tag from GitHub SHA"
             export IMAGE_TAG=${{ github.sha }}
