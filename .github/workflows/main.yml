@@ -1,46 +1,98 @@
+# name: Deploy to EC2
+
+# on:
+#   repository_dispatch:
+#     types: [frontend_updated, backend_updated]
+
+# permissions:
+#   contents: write   # ✅ THIS FIXES THE 403 ERROR
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Update env file
+#         run: |
+#           if [ "${{ github.event.action }}" = "frontend_updated" ]; then
+#             sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.tag }}/" .env
+#           fi
+
+#           if [ "${{ github.event.action }}" = "backend_updated" ]; then
+#             sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.tag }}/" .env
+#           fi
+
+#       - name: Commit updated version
+#         run: |
+#           git config user.name "ci-bot"
+#           git config user.email "ci@github.com"
+#           git add .env
+#           git commit -m "Update image tag" || echo "No changes"
+#           git push
+
+#       - name: Deploy to EC2
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_SSH_KEY }}
+#           script: |
+#             cd /home/ec2-user/deployment
+#             git pull origin main
+#             docker compose pull
+#             docker compose up -d --force-recreate --remove-orphans
+
 name: Deploy to EC2
 
 on:
   repository_dispatch:
     types: [frontend_updated, backend_updated]
 
-permissions:
-  contents: write   # ✅ THIS FIXES THE 403 ERROR
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Update env file
-        run: |
-          if [ "${{ github.event.action }}" = "frontend_updated" ]; then
-            sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.tag }}/" .env
-          fi
-
-          if [ "${{ github.event.action }}" = "backend_updated" ]; then
-            sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.tag }}/" .env
-          fi
-
-      - name: Commit updated version
-        run: |
-          git config user.name "ci-bot"
-          git config user.email "ci@github.com"
-          git add .env
-          git commit -m "Update image tag" || echo "No changes"
-          git push
-
-      - name: Deploy to EC2
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             cd /home/ec2-user/deployment
-            git pull origin main
+
+            echo "📥 Sync deployment repo..."
+            git fetch origin
+            git reset --hard origin/main
+
+            EVENT_TYPE="${{ github.event.action }}"
+
+            echo "🔔 Event type: $EVENT_TYPE"
+
+            if [ "$EVENT_TYPE" = "frontend_updated" ]; then
+              echo "🔖 Updating FRONTEND_TAG..."
+              sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.frontend_tag }}/" .env
+            fi
+
+            if [ "$EVENT_TYPE" = "backend_updated" ]; then
+              echo "🔖 Updating BACKEND_TAG..."
+              sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.backend_tag }}/" .env
+            fi
+
+            echo "📄 Current .env values:"
+            grep -E 'FRONTEND_TAG|BACKEND_TAG' .env
+
+            echo "🛑 Stopping containers..."
+            docker compose down
+
+            echo "📦 Pulling images..."
             docker compose pull
+
+            echo "▶️ Starting containers..."
             docker compose up -d --force-recreate --remove-orphans
 
+            echo "✅ Deployment completed successfully"
