@@ -1,101 +1,86 @@
-# name: Deploy to EC2
+name: Deploy to EC2
 
-# on:
-#   repository_dispatch:
-#     types: [frontend_updated, backend_updated]
+on:
+  repository_dispatch:
+    types:
+      - frontend_updated
+      - backend_updated
 
-# permissions:
-#   contents: write   # ✅ THIS FIXES THE 403 ERROR
+permissions:
+  contents: write
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - uses: actions/checkout@v4
+    steps:
+      # -----------------------
+      # CHECKOUT DEPLOYMENT REPO
+      # -----------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-#       - name: Update env file
-#         run: |
-#           if [ "${{ github.event.action }}" = "frontend_updated" ]; then
-#             sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.tag }}/" .env
-#           fi
+      # -----------------------
+      # UPDATE .env BASED ON EVENT
+      # -----------------------
+      - name: Update env file
+        run: |
+          EVENT_TYPE="${{ github.event.action }}"
 
-#           if [ "${{ github.event.action }}" = "backend_updated" ]; then
-#             sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.tag }}/" .env
-#           fi
+          echo "Event type: $EVENT_TYPE"
 
-#       - name: Commit updated version
-#         run: |
-#           git config user.name "ci-bot"
-#           git config user.email "ci@github.com"
-#           git add .env
-#           git commit -m "Update image tag" || echo "No changes"
-#           git push
+          if [ "$EVENT_TYPE" = "frontend_updated" ]; then
+            echo "Updating FRONTEND_TAG"
+            sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.frontend_tag }}/" .env
+          fi
 
-#       - name: Deploy to EC2
-#         uses: appleboy/ssh-action@v1.0.3
-#         with:
-#           host: ${{ secrets.EC2_HOST }}
-#           username: ${{ secrets.EC2_USER }}
-#           key: ${{ secrets.EC2_SSH_KEY }}
-#           script: |
-#             cd /home/ec2-user/deployment
-#             git pull origin main
-#             docker compose pull
-#             docker compose up -d --force-recreate --remove-orphans
+          if [ "$EVENT_TYPE" = "backend_updated" ]; then
+            echo "Updating BACKEND_TAG"
+            sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.backend_tag }}/" .env
+          fi
 
-# name: Deploy to EC2
+          echo "Current .env values:"
+          grep -E 'FRONTEND_TAG|BACKEND_TAG' .env
 
-# on:
-#   repository_dispatch:
-#     types: [frontend_updated, backend_updated]
+      # -----------------------
+      # COMMIT UPDATED .env
+      # -----------------------
+      - name: Commit updated env file
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@github.com"
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+          git add .env
+          git commit -m "Update image tag via CI" || echo "No changes to commit"
+          git push
 
-#     steps:
-#       - name: Deploy on EC2
-#         uses: appleboy/ssh-action@v1.0.3
-#         with:
-#           host: ${{ secrets.EC2_HOST }}
-#           username: ec2-user
-#           key: ${{ secrets.EC2_SSH_KEY }}
-#           script: |
-#             set -e
-#             cd /home/ec2-user/deployment
+      # -----------------------
+      # DEPLOY TO EC2
+      # -----------------------
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "🚀 Deploying application on EC2"
 
-#             echo "📥 Sync deployment repo..."
-#             git fetch origin
-#             git reset --hard origin/main
+            cd /home/ec2-user/deployment
 
-#             EVENT_TYPE="${{ github.event.action }}"
+            echo "📥 Sync deployment repo..."
+            git fetch origin
+            git reset --hard origin/main
 
-#             echo "🔔 Event type: $EVENT_TYPE"
+            echo "📦 Pulling images..."
+            docker compose pull
 
-#             if [ "$EVENT_TYPE" = "frontend_updated" ]; then
-#               echo "🔖 Updating FRONTEND_TAG..."
-#               sed -i "s/^FRONTEND_TAG=.*/FRONTEND_TAG=${{ github.event.client_payload.frontend_tag }}/" .env
-#             fi
+            echo "▶️ Restarting containers..."
+            docker compose up -d --force-recreate --remove-orphans
 
-#             if [ "$EVENT_TYPE" = "backend_updated" ]; then
-#               echo "🔖 Updating BACKEND_TAG..."
-#               sed -i "s/^BACKEND_TAG=.*/BACKEND_TAG=${{ github.event.client_payload.backend_tag }}/" .env
-#             fi
+            echo "✅ Deployment completed successfully"
 
-#             echo "📄 Current .env values:"
-#             grep -E 'FRONTEND_TAG|BACKEND_TAG' .env
-
-#             echo "🛑 Stopping containers..."
-#             docker compose down
-
-#             echo "📦 Pulling images..."
-#             docker compose pull
-
-#             echo "▶️ Starting containers..."
-#             docker compose up -d --force-recreate --remove-orphans
-
-#             echo "✅ Deployment completed successfully"
 # name: Branch-specific CI and CD
 
 # on:
@@ -187,50 +172,50 @@
 
 #             docker compose pull
 #             docker compose up -d
-name: Branch Deploy to EC2 (CD only)
+# name: Branch Deploy to EC2 (CD only)
 
-on:
-  push:
-    branches:
-      - uat
-      - test
-      - demo
+# on:
+#   push:
+#     branches:
+#       - uat
+#       - test
+#       - demo
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-      # -----------------------
-      # SET BRANCH NAME
-      # -----------------------
-      - name: Set branch name
-        run: |
-          echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+#     steps:
+#       # -----------------------
+#       # SET BRANCH NAME
+#       # -----------------------
+#       - name: Set branch name
+#         run: |
+#           echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
-      # -----------------------
-      # DEPLOY TO EC2
-      # -----------------------
-      - name: Deploy on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            echo "🚀 Deploying branch: ${BRANCH_NAME}"
+#       # -----------------------
+#       # DEPLOY TO EC2
+#       # -----------------------
+#       - name: Deploy on EC2
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_SSH_KEY }}
+#           script: |
+#             set -e
+#             echo "🚀 Deploying branch: ${BRANCH_NAME}"
 
-            cd /home/ec2-user/${BRANCH_NAME}
-            export BRANCH_NAME=${BRANCH_NAME}
+#             cd /home/ec2-user/${BRANCH_NAME}
+#             export BRANCH_NAME=${BRANCH_NAME}
 
-            echo "📦 Pulling latest images for ${BRANCH_NAME}..."
-            docker compose pull
+#             echo "📦 Pulling latest images for ${BRANCH_NAME}..."
+#             docker compose pull
 
-            echo "▶️ Restarting containers..."
-            docker compose up -d --remove-orphans
+#             echo "▶️ Restarting containers..."
+#             docker compose up -d --remove-orphans
 
-            echo "✅ Deployment completed for ${BRANCH_NAME}"
+#             echo "✅ Deployment completed for ${BRANCH_NAME}"
