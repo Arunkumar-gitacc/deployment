@@ -219,3 +219,36 @@
 #             docker compose up -d --remove-orphans
 
 #             echo "✅ Deployment completed for ${BRANCH_NAME}"
+
+
+
+name: Deploy to Environment
+
+on:
+  push:
+    branches: [dev, test, demo, prod]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set environment
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          echo "ENV=$BRANCH" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$BRANCH-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ec2-user/deployment/${{ env.ENV }}
+            export FRONTEND_TAG=${{ env.IMAGE_TAG }}
+            export BACKEND_TAG=${{ env.IMAGE_TAG }}
+            docker compose pull
+            docker compose up -d --force-recreate --remove-orphans
