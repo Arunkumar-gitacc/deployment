@@ -298,6 +298,16 @@ jobs:
           echo "Environment: ${{ github.event.client_payload.environment }}"
           echo "Repo: ${{ github.event.client_payload.repo }}"
           echo "Image Tag: ${{ github.event.client_payload.image_tag }}"
+      
+
+      - name: Debug token exists
+        run: |
+          if [ -z "${{ secrets.DEPLOY_REPO_TOKEN }}" ]; then
+            echo "❌ DEPLOY_REPO_TOKEN is EMPTY or NOT SET in this repo"
+            exit 1
+          else
+            echo "✅ DEPLOY_REPO_TOKEN is available"
+          fi
 
       - name: SSH and deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
