@@ -300,6 +300,19 @@ jobs:
           echo "Image Tag: ${{ github.event.client_payload.image_tag }}"
       
       
+      # - name: SSH and deploy on EC2
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USERNAME }}
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     port: 22
+      #     script: |
+      #       set -e
+      #       cd /home/ec2-user/deployment
+      #       chmod +x deploy.sh
+      #       ./deploy.sh "${{ github.event.client_payload.environment }}"
+
       - name: SSH and deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -309,6 +322,12 @@ jobs:
           port: 22
           script: |
             set -e
+            echo "✅ Connected"
+            whoami
+            pwd
+            ls -la
             cd /home/ec2-user/deployment
+            ls -la
             chmod +x deploy.sh
             ./deploy.sh "${{ github.event.client_payload.environment }}"
+
