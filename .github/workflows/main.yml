@@ -282,7 +282,7 @@
 #             chmod +x deploy.sh
 #             ./deploy.sh ${{ github.ref_name }}
 
-name: Deploy to EC2 (Triggered from FE/BE builds)
+name: Deploy to EC2 (Branch Latest)
 
 on:
   repository_dispatch:
@@ -293,22 +293,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Print payload (debug)
-        run: |
-          echo "Environment: ${{ github.event.client_payload.environment }}"
-          echo "Repo: ${{ github.event.client_payload.repo }}"
-          echo "Image Tag: ${{ github.event.client_payload.image_tag }}"
-      
-      
-      - name: SSH and deploy on EC2
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER}}
+          username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
           script: |
-            set -e
             cd /home/ec2-user/deployment
+            git pull origin main
             chmod +x deploy.sh
-            ./deploy.sh "${{ github.event.client_payload.environment }}"
+            ENV=${{ github.event.client_payload.env }} ./deploy.sh
+
