@@ -252,22 +252,54 @@
 #             export BACKEND_TAG=${{ env.IMAGE_TAG }}
 #             docker compose pull
 #             docker compose up -d --force-recreate --remove-orphans
-name: Deploy to EC2 (Any Branch)
+
+
+# name: Deploy to EC2 (Any Branch)
+
+# on:
+#   push:
+#     branches:
+#       - dev
+#       - test
+#       - demo
+#       - prod
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Deploy to EC2 via SSH
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USERNAME }}
+#           key: ${{ secrets.EC2_SSH_KEY }}
+#           port: 22
+#           script: |
+#             set -e
+#             cd /home/ec2-user/deployment
+#             chmod +x deploy.sh
+#             ./deploy.sh ${{ github.ref_name }}
+
+name: Deploy to EC2 (Triggered from FE/BE builds)
 
 on:
-  push:
-    branches:
-      - dev
-      - test
-      - demo
-      - prod
+  repository_dispatch:
+    types: [deploy]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2 via SSH
+      - name: Print payload (debug)
+        run: |
+          echo "Environment: ${{ github.event.client_payload.environment }}"
+          echo "Repo: ${{ github.event.client_payload.repo }}"
+          echo "Image Tag: ${{ github.event.client_payload.image_tag }}"
+
+      - name: SSH and deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -278,4 +310,4 @@ jobs:
             set -e
             cd /home/ec2-user/deployment
             chmod +x deploy.sh
-            ./deploy.sh ${{ github.ref_name }}
+            ./deploy.sh "${{ github.event.client_payload.environment }}"

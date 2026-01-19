@@ -12,30 +12,31 @@
 #!/bin/bash
 set -e
 
-# Docker Hub username
-DOCKER_USER="arunkumar885825"
+ENV_NAME="${1:-dev}"   # default dev
 
-# Get Git commit SHA (short)
-IMAGE_TAG=$(git rev-parse --short HEAD)
+echo "✅ Starting deployment for environment: $ENV_NAME"
+echo "📁 Current directory: $(pwd)"
 
-echo "🔖 Image tag: $IMAGE_TAG"
+# Compose file naming strategy:
+# docker-compose.dev.yml / docker-compose.test.yml / docker-compose.demo.yml / docker-compose.prod.yml
+COMPOSE_FILE="docker-compose.${ENV_NAME}.yml"
 
-echo "🔐 Logging into Docker Hub"
-echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+if [ ! -f "$COMPOSE_FILE" ]; then
+  echo "❌ Compose file not found: $COMPOSE_FILE"
+  echo "📌 Available files:"
+  ls -la
+  exit 1
+fi
 
-# ---------------- FRONTEND ----------------
-echo "📦 Building frontend image"
-docker build -t $DOCKER_USER/frontend:$IMAGE_TAG ./frontend
+echo "🐳 Using compose file: $COMPOSE_FILE"
 
-echo "📤 Pushing frontend image"
-docker push $DOCKER_USER/frontend:$IMAGE_TAG
+echo "📥 Pulling latest images..."
+docker compose -f "$COMPOSE_FILE" pull
 
-# ---------------- BACKEND ----------------
-echo "📦 Building backend image"
-docker build -t $DOCKER_USER/backend:$IMAGE_TAG ./backend
+echo "🚀 Recreating containers..."
+docker compose -f "$COMPOSE_FILE" up -d --force-recreate --remove-orphans
 
-echo "📤 Pushing backend image"
-docker push $DOCKER_USER/backend:$IMAGE_TAG
+echo "✅ Deployment completed for: $ENV_NAME"
+docker compose -f "$COMPOSE_FILE" ps
 
-echo "✅ Images built and pushed successfully"
 
