@@ -301,9 +301,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ec2-user/deployment
-            git pull origin main
+
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+
             chmod +x deploy.sh
-            ENV=${{ github.event.client_payload.env }} ./deploy.sh
+            ENV=prod ./deploy.sh
+
 
 
 
