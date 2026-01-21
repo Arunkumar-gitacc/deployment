@@ -26,7 +26,7 @@ echo "📌 Pulling latest images..."
 docker compose pull
 
 echo "📌 Starting containers..."
-docker compose up -d
+docker compose up -d --force-recreate
 
 
 
