@@ -307,7 +307,7 @@ jobs:
             
 
             chmod +x deploy.sh
-            ENV=prod ./deploy.sh
+            ENV="${{ github.event.client_payload.env }}" ./deploy.sh
 
 
 
