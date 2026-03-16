@@ -19,5 +19,5 @@ spec:
       - name: frontend
         image: arunkumar885/frontend:frontend-prod-v1.0.176
         ports:
-        - containerPort: 8080
+        - containerPort: 80
         imagePullPolicy: Always
