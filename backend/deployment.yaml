@@ -16,18 +16,15 @@ spec:
         app: backend
     spec:
       containers:
-      - name: backend
-        image: arunkumar885/backend:backend-prod-v1.0.66
-        ports:
-        - containerPort: 8080
-        imagePullPolicy: Always
-
-        env:
-        - name: SPRING_DATASOURCE_URL
-          value: jdbc:mysql://mysql-service:3306/userdb
-      
-        - name: SPRING_DATASOURCE_USERNAME
-          value: appuser
-      
-        - name: SPRING_DATASOURCE_PASSWORD
-          value: apppassword
+        - name: backend
+          image: arunkumar885/backend:test-v1.0.8
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/userdb
+            - name: SPRING_DATASOURCE_USERNAME
+              value: appuser
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: apppassword
